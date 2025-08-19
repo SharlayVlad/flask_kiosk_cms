@@ -16,6 +16,40 @@
 
 <main class="admin-main grid-2">
 
+  <!-- Организация -->
+<section class="card">
+  <h3>Организация</h3>
+  <form id="orgForm" class="form" action="{{ url_for('admin_organization_update') }}" method="post" enctype="multipart/form-data">
+    <label>Название организации
+  <input type="text" name="org_name" value="{{ organization.name if organization else '' }}" required>
+</label>
+
+<label>Логотип</label>
+<div class="custom-file">
+  <input type="file" name="org_logo" id="orgLogoFile" class="file-input" accept=".png,.jpg,.jpeg,.gif,.svg">
+  <button type="button" class="btn btn-primary" onclick="document.getElementById('orgLogoFile').click();">Выберите файл</button>
+  <span class="file-name" id="orgLogoFileName">
+    {% if organization and organization.logo_path %}{{ organization.logo_path }}{% else %}Файл не выбран{% endif %}
+  </span>
+</div>
+
+    <br>
+    <button class="btn btn-success" type="submit">Сохранить организацию</button>
+  </form>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const orgLogoInput = document.getElementById('orgLogoFile');
+  const orgLogoName = document.getElementById('orgLogoFileName');
+
+  orgLogoInput.addEventListener('change', () => {
+    const fileName = orgLogoInput.files[0] ? orgLogoInput.files[0].name : 'Файл не выбран';
+    orgLogoName.textContent = fileName;
+  });
+});
+</script>
+
   <!-- Кнопки -->
   <section class="card">
     <h3>Кнопки</h3>

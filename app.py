@@ -64,6 +64,14 @@ def init_db():
             FOREIGN KEY(page_id) REFERENCES pages(id)
         )
     """)
+    # Organization
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS organization(
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            logo_path TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -119,8 +127,14 @@ def require_auth():
 def kiosk():
     conn = db()
     buttons = conn.execute("SELECT * FROM buttons ORDER BY position ASC").fetchall()
+    org = conn.execute("SELECT * FROM organization WHERE id=1").fetchone()
     conn.close()
-    return render_template("kiosk.html", buttons=buttons)
+    
+    org_name = org["name"] if org else "Организация"
+    org_logo = org["logo_path"] if org else None
+
+    return render_template("kiosk.html", buttons=buttons, org_name=org_name, org_logo=org_logo)
+
 
 @app.route("/page/<int:pid>")
 def page(pid):
@@ -136,12 +150,58 @@ def page(pid):
 @app.route("/admin")
 def admin():
     redir = require_auth()
-    if redir: return redir
+    if redir: 
+        return redir
+
     conn = db()
+    # Страницы и кнопки
     pages = conn.execute("SELECT * FROM pages ORDER BY id DESC").fetchall()
     buttons = conn.execute("SELECT * FROM buttons ORDER BY position ASC").fetchall()
+
+    # Организация
+    org_row = conn.execute("SELECT * FROM organization WHERE id=1").fetchone()
     conn.close()
-    return render_template("admin_dashboard.html", pages=pages, buttons=buttons)
+    organization = dict(org_row) if org_row else None
+
+    return render_template(
+        "admin_dashboard.html",
+        pages=pages,
+        buttons=buttons,
+        organization=organization
+    )
+
+
+@app.route("/admin/organization/update", methods=["POST"])
+def admin_organization_update():
+    redir = require_auth()
+    if redir: 
+        return redir
+
+    name = request.form.get("org_name", "").strip()
+    logo_file = request.files.get("org_logo")
+    logo_path = save_file(logo_file) if logo_file else None
+
+    conn = db()
+    existing = conn.execute("SELECT * FROM organization WHERE id=1").fetchone()
+    if existing:
+        updates = {"name": name}
+        if logo_path:
+            if existing["logo_path"]:
+                delete_uploaded_file(existing["logo_path"])
+            updates["logo_path"] = logo_path
+
+        set_clause = ", ".join([f"{k}=?" for k in updates.keys()])
+        vals = list(updates.values())  # убрали лишний [1]
+        conn.execute(f"UPDATE organization SET {set_clause} WHERE id=1", vals)
+    else:
+        conn.execute(
+            "INSERT INTO organization(id,name,logo_path) VALUES (1,?,?)",
+            (name, logo_path)
+        )
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin"))
+
 
 # ---------------- Pages CRUD ----------------
 @app.route("/admin/page/create", methods=["POST"])
