@@ -28,10 +28,10 @@
 <div class="custom-file">
   <input type="file" name="org_logo" id="orgLogoFile" class="file-input" accept=".png,.jpg,.jpeg,.gif,.svg">
   <button type="button" class="btn btn-primary" onclick="document.getElementById('orgLogoFile').click();">Выберите файл</button>
-  <span class="file-name" id="orgLogoFileName">
-    {% if organization and organization.logo_path %}{{ organization.logo_path }}{% else %}Файл не выбран{% endif %}
-  </span>
 </div>
+<br>
+<img id="orgLogoPreview" src="{% if organization and organization.logo_path %}{{ url_for('uploads', filename=organization.logo_path) }}{% endif %}" alt="Превью логотипа" style="width:100px; height:100px; object-fit:cover; border-radius:50%; margin-top:10px;">
+
 
     <br>
     <button class="btn btn-success" type="submit">Сохранить организацию</button>
@@ -41,14 +41,22 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const orgLogoInput = document.getElementById('orgLogoFile');
-  const orgLogoName = document.getElementById('orgLogoFileName');
+  const orgLogoPreview = document.getElementById('orgLogoPreview');
 
   orgLogoInput.addEventListener('change', () => {
-    const fileName = orgLogoInput.files[0] ? orgLogoInput.files[0].name : 'Файл не выбран';
-    orgLogoName.textContent = fileName;
+    const file = orgLogoInput.files[0];
+    if(file){
+      const reader = new FileReader();
+      reader.onload = e => { orgLogoPreview.src = e.target.result; };
+      reader.readAsDataURL(file);
+    } else {
+      orgLogoPreview.src = '';
+    }
   });
 });
+
 </script>
+
 
   <!-- Кнопки -->
   <section class="card">
