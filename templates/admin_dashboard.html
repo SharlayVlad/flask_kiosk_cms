@@ -177,38 +177,22 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 
 <!-- TinyMCE -->
-<script src="https://cdn.tiny.cloud/1/i9tvkgjg77eixf6flp350erllyjxnc60qefuyrkmbt66ggig/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="{{ url_for('static', filename='tinymce/tinymce.min.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    // TinyMCE init
-    tinymce.init({
-        selector: '#content',
-        height: 400,
-        plugins: 'image link lists',
-        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
-        automatic_uploads: true,
-        file_picker_types: 'image',
-        file_picker_callback: function(callback, value, meta) {
-            const input = document.createElement('input');
-            input.setAttribute('type', 'file');
-            input.setAttribute('accept', 'image/*,application/pdf');
-            input.onchange = function() {
-                const file = this.files[0];
-                const reader = new FileReader();
-                reader.onload = function() {
-                    if(file.type.startsWith('image')){
-                        callback(reader.result, { alt: file.name });
-                    } else {
-                        tinymce.activeEditor.insertContent(`<a href="${reader.result}" target="_blank" style="display:block; margin:10px 0;">${file.name}</a>`);
-                    }
-                };
-                reader.readAsDataURL(file);
-            };
-            input.click();
-        }
-    });
+   tinymce.init({
+  selector: '#content',
+  plugins: 'image table lists link code',
+  toolbar: 'undo redo | styles | bold italic underline | alignleft aligncenter alignright | bullist numlist | table image link | code',
+  height: 400,
+  menubar: true,
+  branding: false, // убирает "Powered by TinyMCE"
+  images_upload_url: '/upload_image',
+  automatic_uploads: true
+});
+
 
     // Add/Remove PDF
     const addPdfBtn = document.getElementById('addPdfBtn');
