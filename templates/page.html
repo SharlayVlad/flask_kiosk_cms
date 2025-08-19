@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ page['title'] }}{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div class="brand">
+    <div class="logo-circle">Л</div>
+    <div class="org">
+      <div class="org-title">Название организации</div>
+      <div class="org-sub">{{ page['title'] }}</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <a href="{{ url_for('kiosk') }}" class="btn-outline">Главное меню</a>
+</header>
+
+<main class="page-main">
+  <article class="card">
+    <div class="content">{{ page['content']|safe }}</div>
+    
+    {% if page['image_path'] %}
+      <img class="page-image" src="{{ url_for('uploads', filename=page['image_path']) }}" alt="Изображение страницы">
+    {% endif %}
+
+    {% if pdfs %}
+      <div class="pdf-buttons">
+        {% for pdf in pdfs %}
+          <button type="button" class="btn"
+                  onclick="openPdfModal('{{ url_for('uploads', filename=pdf['file_path']) }}', '{{ pdf['title'] }}')">
+            {{ pdf['title'] }}
+          </button>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </article>
+</main>
+
+<!-- Модальное окно PDF -->
+<div id="pdfModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closePdfModal()">&times;</span>
+    <iframe id="pdfFrame" width="100%" height="100%" style="border:none;"></iframe>
+    <div id="pdfTitle" style="padding:10px; font-weight:bold; text-align:center;"></div>
+  </div>
+</div>
+
+<script>
+function openPdfModal(url, title) {
+    document.getElementById('pdfFrame').src = url;
+    document.getElementById('pdfTitle').innerText = title;
+    document.getElementById('pdfModal').style.display = 'flex';
+}
+
+function closePdfModal() {
+    document.getElementById('pdfFrame').src = '';
+    document.getElementById('pdfModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('pdfModal');
+    if (event.target === modal) {
+        closePdfModal();
+    }
+}
+</script>
+
+<style>
+.modal {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background-color: #fff;
+    width: 90%;
+    height: 80%;
+    max-width: 1200px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+}
+#pdfFrame { flex: 1; }
+#pdfTitle { background:#f0f0f0; }
+.close { align-self:flex-end; cursor:pointer; font-size:28px; font-weight:bold; padding:5px; }
+.pdf-buttons { margin-top: 15px; display:flex; gap:10px; flex-wrap:wrap; }
+.page-image { max-width:100%; margin-top:15px; }
+</style>
+{% endblock %}

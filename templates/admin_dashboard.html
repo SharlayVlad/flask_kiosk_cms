@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% block title %}Админка — Панель управления{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div class="brand">
+    <div class="logo-circle">A</div>
+    <div class="org">
+      <div class="org-title">Админ-панель</div>
+      <div class="org-sub">Управление киоском</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="icon-btn" title="Переключить тему">🌙/☀️</button>
+  <a class="btn btn-secondary" href="{{ url_for('logout') }}">Выход</a>
+</header>
+
+<main class="admin-main grid-2">
+
+  <!-- Кнопки -->
+  <section class="card">
+    <h3>Кнопки</h3>
+    <form id="buttonForm" class="form" action="{{ url_for('admin_button_create') }}" method="post" enctype="multipart/form-data">
+      <label>Название<input name="title" required></label>
+      <label>Цвет кнопки<input name="color" type="color" value="#0d6efd"></label>
+      <label>Страница 
+        <select name="page_id" required>
+          {% for p in pages %}
+          <option value="{{ p['id'] }}">{{ p['title'] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <!-- Стилизованный input type=file -->
+      <label>Иконка</label>
+      <div class="custom-file">
+        <input type="file" name="icon" id="iconFile" class="file-input" accept=".png,.jpg,.jpeg,.gif,.svg">
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('iconFile').click();">Выберите файл</button>
+        <span class="file-name" id="iconFileName">Файл не выбран</span>
+      </div>
+      <br>
+
+      <button class="btn btn-primary" type="submit">Добавить кнопку</button>
+    </form>
+
+    <div class="reorder-help">Перетаскивайте для сортировки. Двойной клик — редактировать.</div>
+    <ul id="buttonsList" class="list">
+      {% for b in buttons %}
+      <li class="list-item" draggable="true" data-id="{{ b['id'] }}" data-title="{{ b['title'] }}" data-color="{{ b['color'] or '#0d6efd' }}" data-page-id="{{ b['page_id'] }}">
+        <span class="badge" style="background: {{ b['color'] or '#0d6efd' }}"></span>
+        <span class="item-title">{{ b['title'] }}</span>
+        <div class="right">
+          <form class="inline" action="{{ url_for('admin_button_delete', bid=b['id']) }}" method="post" onsubmit="return confirm('Удалить кнопку?')">
+            <button class="btn btn-danger" type="submit">Удалить</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- Страницы -->
+  <section class="card">
+    <h3>Страницы</h3>
+    <form class="form" action="{{ url_for('admin_page_create') }}" method="post" enctype="multipart/form-data">
+      <label>Заголовок<input name="title" required></label>
+      <label>Контент</label>
+      <textarea id="content" name="content">{{ page['content'] if page else '' }}</textarea>
+
+      <!-- PDF блок -->
+      <label>PDF</label>
+      <div id="pdfContainer">
+        {% if pdfs %}
+          {% for pdf in pdfs %}
+          <div class="pdfItem">
+            <input type="text" name="pdf_titles[]" value="{{ pdf['title'] }}" placeholder="Название PDF" required>
+            <div class="custom-file">
+              <input type="file" name="pdfs[]" class="file-input" accept=".pdf">
+              <button type="button" class="btn btn-primary" onclick="this.previousElementSibling.click();">Выберите файл</button>
+              <span class="file-name">Файл не выбран</span>
+            </div>
+            <button type="button" class="btn btn-danger removePdfBtn">Удалить</button>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="pdfItem">
+            <input type="text" name="pdf_titles[]" placeholder="Название PDF" required>
+            <div class="custom-file">
+              <input type="file" name="pdfs[]" class="file-input" accept=".pdf" required>
+              <button type="button" class="btn btn-primary" onclick="this.previousElementSibling.click();">Выберите файл</button>
+              <span class="file-name">Файл не выбран</span>
+            </div>
+            <button type="button" class="btn btn-danger removePdfBtn">Удалить</button>
+          </div>
+        {% endif %}
+      </div>
+      <button type="button" id="addPdfBtn" class="btn btn-secondary">Добавить ещё PDF</button>
+
+      <button class="btn btn-primary" type="submit">Создать страницу</button>
+    </form>
+
+    <ul class="list">
+      {% for p in pages %}
+      <li class="list-item">
+        <strong>{{ p['title'] }}</strong>
+        <div class="right">
+          <a class="link" href="{{ url_for('page', pid=p['id']) }}" target="_blank">открыть</a>
+          <a class="link" href="{{ url_for('admin_page_edit', pid=p['id']) }}">редактировать</a>
+          <form class="inline" action="{{ url_for('admin_page_delete', pid=p['id']) }}" method="post" onsubmit="return confirm('Удалить страницу?')">
+            <button class="btn btn-danger" type="submit">Удалить</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+</main>
+
+<!-- Модальное окно редактирования кнопки -->
+<div id="editModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#fff; padding:20px; border:1px solid #ccc; z-index:1000;">
+  <h3>Редактирование кнопки</h3>
+  <label>Название:</label>
+  <input type="text" id="editTitle"><br><br>
+  <label>Цвет:</label>
+  <input type="color" id="editColor"><br><br>
+  <label>Страница:</label>
+  <select id="editPage">
+    {% for p in pages %}
+      <option value="{{ p['id'] }}">{{ p['title'] }}</option>
+    {% endfor %}
+  </select><br><br>
+  <button id="saveEdit" class="btn btn-primary">Сохранить</button>
+  <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Отмена</button>
+</div>
+
+<!-- TinyMCE -->
+<script src="https://cdn.tiny.cloud/1/i9tvkgjg77eixf6flp350erllyjxnc60qefuyrkmbt66ggig/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // TinyMCE init
+    tinymce.init({
+        selector: '#content',
+        height: 400,
+        plugins: 'image link lists',
+        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
+        automatic_uploads: true,
+        file_picker_types: 'image',
+        file_picker_callback: function(callback, value, meta) {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*,application/pdf');
+            input.onchange = function() {
+                const file = this.files[0];
+                const reader = new FileReader();
+                reader.onload = function() {
+                    if(file.type.startsWith('image')){
+                        callback(reader.result, { alt: file.name });
+                    } else {
+                        tinymce.activeEditor.insertContent(`<a href="${reader.result}" target="_blank" style="display:block; margin:10px 0;">${file.name}</a>`);
+                    }
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+    });
+
+    // Add/Remove PDF
+    const addPdfBtn = document.getElementById('addPdfBtn');
+    const pdfContainer = document.getElementById('pdfContainer');
+
+    addPdfBtn.addEventListener('click', () => {
+        const div = document.createElement('div');
+        div.className = 'pdfItem';
+        div.innerHTML = `
+            <input type="text" name="pdf_titles[]" placeholder="Название PDF" required>
+            <div class="custom-file">
+              <input type="file" name="pdfs[]" class="file-input" accept=".pdf" required>
+              <button type="button" class="btn btn-primary" onclick="this.previousElementSibling.click();">Выберите файл</button>
+              <span class="file-name">Файл не выбран</span>
+            </div>
+            <button type="button" class="btn btn-danger removePdfBtn">Удалить</button>
+        `;
+        pdfContainer.appendChild(div);
+
+        div.querySelector('.removePdfBtn').addEventListener('click', () => div.remove());
+        div.querySelector('.file-input').addEventListener('change', function(){
+            const fileName = this.files[0] ? this.files[0].name : 'Файл не выбран';
+            this.nextElementSibling.nextElementSibling.textContent = fileName;
+        });
+    });
+
+    pdfContainer.querySelectorAll('.removePdfBtn').forEach(btn => {
+        btn.addEventListener('click', e => e.target.closest('.pdfItem').remove());
+    });
+
+    pdfContainer.querySelectorAll('.file-input').forEach(input=>{
+        input.addEventListener('change', function(){
+            const fileName = this.files[0] ? this.files[0].name : 'Файл не выбран';
+            this.nextElementSibling.nextElementSibling.textContent = fileName;
+        });
+    });
+
+    // Edit Modal
+    const editModal = document.getElementById('editModal');
+    const editTitle = document.getElementById('editTitle');
+    const editColor = document.getElementById('editColor');
+    const editPage = document.getElementById('editPage');
+    let editingId = null;
+
+    window.openEditModal = (id, title, color, pageId) => {
+        editingId = id;
+        editTitle.value = title;
+        editColor.value = color;
+        editPage.value = pageId;
+        editModal.style.display = 'block';
+    };
+    window.closeEditModal = () => { editModal.style.display='none'; editingId=null; };
+
+    document.getElementById('saveEdit').addEventListener('click', async () => {
+        if(!editingId) return;
+        const form = new FormData();
+        form.append('title', editTitle.value);
+        form.append('color', editColor.value);
+        form.append('page_id', editPage.value);
+
+        await fetch(`/admin/button/update/${editingId}`, { method:'POST', body:form });
+        location.reload();
+    });
+
+    // Buttons Drag & DoubleClick
+    const list = document.getElementById('buttonsList');
+    let dragEl = null;
+
+    list.addEventListener('dblclick', e => {
+        const item = e.target.closest('.list-item');
+        if(!item) return;
+        openEditModal(item.dataset.id, item.dataset.title, item.dataset.color, item.dataset.pageId);
+    });
+
+    list.addEventListener('dragstart', e => { dragEl = e.target.closest('.list-item'); });
+    list.addEventListener('dragover', e => {
+        e.preventDefault();
+        const target = e.target.closest('.list-item');
+        if (!target || target === dragEl) return;
+        const rect = target.getBoundingClientRect();
+        const next = (e.clientY - rect.top) > rect.height/2;
+        list.insertBefore(dragEl, next ? target.nextSibling : target);
+    });
+    list.addEventListener('drop', async e => {
+        e.preventDefault();
+        const order = Array.from(list.querySelectorAll('.list-item')).map((li,i)=>({id:parseInt(li.dataset.id),position:i}));
+        try {
+            await fetch('/admin/button/reorder', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify(order)
+            });
+        } catch(err){ console.error(err); }
+    });
+
+});
+</script>
+
+<style>
+body.dark-theme{background:#121212;color:#e0e0e0;}
+body.dark-theme .topbar{background:#1f1f1f;}
+body.dark-theme .card{background:#1e1e1e;color:#e0e0e0;}
+
+.pdfItem { margin-bottom: 10px; display:flex; gap:5px; align-items:center; }
+.pdfItem input[type="text"] { flex:2; }
+.pdfItem .removePdfBtn { flex:1; }
+
+.custom-file {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-name {
+  font-size: 0.9em;
+  color: #555;
+}
+
+.btn, .btn-primary, .btn-secondary, .btn-danger {
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.95em;
+  transition: all 0.2s;
+}
+
+.btn:hover, .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover {
+  opacity: 0.9;
+}
+
+.btn-primary { background-color: #0d6efd; }
+.btn-secondary { background-color: #6c757d; }
+.btn-danger { background-color: #dc3545; }
+</style>
+{% endblock %}

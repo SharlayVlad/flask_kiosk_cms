@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}Редактирование страницы — {{ page['title'] }}{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div class="brand">
+    <div class="logo-circle">A</div>
+    <div class="org">
+      <div class="org-title">Редактирование страницы</div>
+      <div class="org-sub">{{ page['title'] }}</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <a class="btn-outline" href="{{ url_for('admin') }}">Назад</a>
+</header>
+
+<main class="admin-main">
+  <section class="card">
+    <h3>Редактировать страницу</h3>
+    <form class="form" action="{{ url_for('admin_page_edit', pid=page['id']) }}" method="post" enctype="multipart/form-data">
+      
+      <!-- Заголовок -->
+      <label>Заголовок
+        <input name="title" value="{{ page['title'] }}" required>
+      </label>
+
+      <!-- Контент -->
+      <label>Контент</label>
+      <textarea id="content" name="content">{{ page['content'] or '' }}</textarea>
+      
+      <!-- Загрузка PDF -->
+      <label>Загрузить PDF</label>
+      <input type="file" name="pdf" accept=".pdf" id="pdfInput">
+
+      {% if pdfs %}
+        <div style="margin-top:5px;">
+          <strong>Текущие PDF:</strong>
+          <ul>
+            {% for pdf in pdfs %}
+              <li>
+                <a href="{{ url_for('uploads', filename=pdf['file_path']) }}" target="_blank">{{ pdf['title'] }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% else %}
+        <div style="margin-top:5px; color:#888;">PDF отсутствует</div>
+      {% endif %}
+
+      <button class="btn" type="submit">Сохранить</button>
+    </form>
+  </section>
+</main>
+
+<!-- Модальное окно PDF -->
+<div id="pdfModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <span class="close" onclick="closePdfModal()">&times;</span>
+    <iframe id="pdfFrame" src="" width="100%" height="600px"></iframe>
+  </div>
+</div>
+
+<!-- TinyMCE -->
+<script src="https://cdn.tiny.cloud/1/i9tvkgjg77eixf6flp350erllyjxnc60qefuyrkmbt66ggig/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    tinymce.init({
+        selector: '#content',
+        height: 500,
+        plugins: 'image link lists',
+        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
+        images_upload_url: '{{ url_for("upload_image") }}',
+        automatic_uploads: true,
+        file_picker_types: 'image',
+        file_picker_callback: function(callback, value, meta) {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*,application/pdf');
+            input.onchange = function() {
+                const file = this.files[0];
+                const reader = new FileReader();
+                reader.onload = function() {
+                    if(file.type.startsWith('image')){
+                        callback(reader.result, { alt: file.name });
+                    } else {
+                        // PDF вставляем ссылкой
+                        tinymce.activeEditor.insertContent(
+                            `<a href="{{ url_for('uploads', filename='') }}${file.name}" target="_blank" style="display:block; margin:10px 0;">${file.name}</a>`
+                        );
+                    }
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+    });
+
+    // Вставка выбранного PDF в редактор
+    const pdfInput = document.getElementById('pdfInput');
+    pdfInput?.addEventListener('change', e=>{
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            tinymce.activeEditor.insertContent(
+                `<a href="${ev.target.result}" target="_blank" style="display:block; margin:10px 0;">${file.name}</a>`
+            );
+        };
+        reader.readAsDataURL(file);
+    });
+});
+
+function openPdfModal(url){
+    document.getElementById('pdfFrame').src = url;
+    document.getElementById('pdfModal').style.display = 'block';
+}
+function closePdfModal(){
+    document.getElementById('pdfModal').style.display = 'none';
+    document.getElementById('pdfFrame').src = '';
+}
+</script>
+
+<style>
+.modal {
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.modal-content {
+  background-color: #fff;
+  width: 90%;
+  max-width: 1000px;
+  height: 80%;
+  border-radius: 8px;
+  position: relative;
+}
+#pdfFrame { width:100%; height:100%; border:none; }
+.close {
+  position: absolute;
+  right: 10px;
+  top: 5px;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+</style>
+{% endblock %}

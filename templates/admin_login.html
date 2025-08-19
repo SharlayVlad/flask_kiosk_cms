@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Вход в админку{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div class="brand"><div class="logo-circle">A</div><div class="org"><div class="org-title">Админ-панель</div></div></div>
+</header>
+<main class="admin-main">
+  <form class="card form" method="post">
+    <h2>Вход</h2>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}<div class="alert">{{ messages[0] }}</div>{% endif %}
+    {% endwith %}
+    <label>Логин<input name="username" required></label>
+    <label>Пароль<input type="password" name="password" required></label>
+    <button class="btn" type="submit">Войти</button>
+  </form>
+</main>
+{% endblock %}

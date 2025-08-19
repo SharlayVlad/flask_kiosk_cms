@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="{{ current_theme }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Киоск{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <script defer src="{{ url_for('static', filename='js/common.js') }}"></script>
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="theme-{{ current_theme }}">
+  {% block body %}{% endblock %}
+</body>
+</html>

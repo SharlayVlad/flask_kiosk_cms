@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Киоск{% endblock %}
+{% block body %}
+<header class="topbar">
+  <div class="brand">
+    <div class="logo-circle">Л</div>
+    <div class="org">
+      <div class="org-title">{{ org_name }}</div>
+      <div class="org-sub">Информационный киоск</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+</header>
+
+<main class="kiosk-main">
+  <div class="grid">
+    {% for b in buttons %}
+    <a class="tile" href="{{ url_for('page', pid=b['page_id']) }}" style="--tile-color: {{ b['color'] or '#0d6efd' }}">
+      {% if b['icon_path'] %}
+      <img class="tile-icon" src="{{ url_for('static', filename=b['icon_path']) }}" alt="icon">
+      {% endif %}
+      <span class="tile-title">{{ b['title'] }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</main>
+
+<footer class="bottombar">
+  <div id="datetime"></div>
+  <div class="qr-placeholder">QR</div>
+</footer>
+
+<script>
+// Poll theme every 5s
+async function pollTheme(){
+  try{
+    const r = await fetch('/api/theme');
+    const j = await r.json();
+    const t = j.theme || 'light';
+    document.body.classList.toggle('theme-dark', t==='dark');
+    document.body.classList.toggle('theme-light', t==='light');
+  }catch(e){}
+  setTimeout(pollTheme, 5000);
+}
+pollTheme();
+</script>
+
+<!-- Модальное окно PDF -->
+<div id="pdfModal" style="display:none; position:fixed; top:5%; left:50%; transform:translateX(-50%); width:80%; height:90%; background:#fff; z-index:1000; border:1px solid #ccc;">
+  <button onclick="closePdfModal()" style="float:right;">✖</button>
+  <iframe id="pdfFrame" style="width:100%; height:95%;" frameborder="0"></iframe>
+</div>
+
+<script>
+function openPdfModal(url){
+    document.getElementById('pdfFrame').src = url;
+    document.getElementById('pdfModal').style.display = 'block';
+}
+function closePdfModal(){
+    document.getElementById('pdfFrame').src = '';
+    document.getElementById('pdfModal').style.display = 'none';
+}
+</script>
+
+{% endblock %}
