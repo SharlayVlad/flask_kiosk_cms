@@ -176,31 +176,39 @@ document.addEventListener('DOMContentLoaded', () => {
   <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Отмена</button>
 </div>
 
-<!-- CKEditor 5 Classic Build редактор-->
-<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
-
+<!-- TinyMCE -->
+<script src="https://cdn.tiny.cloud/1/i9tvkgjg77eixf6flp350erllyjxnc60qefuyrkmbt66ggig/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
     // TinyMCE init
-    ClassicEditor
-        .create(document.querySelector('#content'), {
-            toolbar: [
-                'heading', '|', 'bold', 'italic', 'underline', 'strikethrough', '|',
-                'link', 'bulletedList', 'numberedList', 'blockQuote', '|',
-                'insertTable', 'imageUpload', '|',
-                'undo', 'redo'
-            ],
-            simpleUpload: {
-                // URL для загрузки изображений
-                uploadUrl: '/admin/upload_image'
-            }
-        })
-        .catch(error => {
-            console.error(error);
-        });
-});
+    tinymce.init({
+        selector: '#content',
+        height: 400,
+        plugins: 'image link lists',
+        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
+        automatic_uploads: true,
+        file_picker_types: 'image',
+        file_picker_callback: function(callback, value, meta) {
+            const input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*,application/pdf');
+            input.onchange = function() {
+                const file = this.files[0];
+                const reader = new FileReader();
+                reader.onload = function() {
+                    if(file.type.startsWith('image')){
+                        callback(reader.result, { alt: file.name });
+                    } else {
+                        tinymce.activeEditor.insertContent(`<a href="${reader.result}" target="_blank" style="display:block; margin:10px 0;">${file.name}</a>`);
+                    }
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+    });
 
     // Add/Remove PDF
     const addPdfBtn = document.getElementById('addPdfBtn');
