@@ -139,12 +139,27 @@ def kiosk():
 @app.route("/page/<int:pid>")
 def page(pid):
     conn = db()
+    
+    # Получаем страницу
     p = conn.execute("SELECT * FROM pages WHERE id=?", (pid,)).fetchone()
     pdfs = conn.execute("SELECT * FROM page_pdfs WHERE page_id=?", (pid,)).fetchall()
+
+    # Получаем организацию (например, единственная запись с id=1)
+    org = conn.execute("SELECT * FROM organization WHERE id=1").fetchone()
+
     conn.close()
+    
     if not p:
         return "Страница не найдена", 404
-    return render_template("page.html", page=dict(p), pdfs=pdfs)
+    
+    return render_template(
+        "page.html",
+        page=dict(p),
+        pdfs=pdfs,
+        org_name=org['name'] if org else 'Название организации',
+        org_logo=org['logo_path'] if org else None
+    )
+
 
 # ---------------- Admin Dashboard ----------------
 @app.route("/admin")
