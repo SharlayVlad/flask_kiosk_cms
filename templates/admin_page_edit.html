@@ -10,34 +10,46 @@
     </div>
   </div>
   <div class="spacer"></div>
-  <a class="btn-outline" href="{{ url_for('admin') }}">Назад</a>
+  <a class="btn btn-secondary" href="{{ url_for('admin') }}">Назад</a>
 </header>
 
 <main class="admin-main">
   <section class="card">
     <h3>Редактировать страницу</h3>
-    <form class="form" action="{{ url_for('admin_page_edit', pid=page['id']) }}" method="post" enctype="multipart/form-data">
-      
-      <!-- Заголовок -->
+
+    <form class="form" id="adminForm" action="{{ url_for('admin_page_edit', pid=page['id']) }}" method="post" enctype="multipart/form-data">
       <label>Заголовок
         <input name="title" value="{{ page['title'] }}" required>
       </label>
 
-      <!-- Контент -->
       <label>Контент</label>
       <textarea id="content" name="content">{{ page['content'] or '' }}</textarea>
-      
-      <!-- Загрузка PDF -->
-      <label>Загрузить PDF</label>
-      <input type="file" name="pdf" accept=".pdf" id="pdfInput">
+
+      <label>Загрузить PDF-файлы</label>
+      <div id="pdfUploads">
+        <!-- Первое поле -->
+        <div class="pdf-upload">
+          <input type="text" name="pdf_titles[]" placeholder="Название PDF" class="pdf-title-input">
+
+          <label class="btn btn-primary custom-file-label">
+            Выбрать файл
+            <input type="file" name="pdfs[]" accept=".pdf" style="display:none">
+          </label>
+
+          <button type="button" class="btn btn-danger" onclick="removePdfField(this)">Удалить</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" id="addPdfBtn">Добавить PDF</button>
 
       {% if pdfs %}
-        <div style="margin-top:5px;">
+        <div style="margin-top:10px;">
           <strong>Текущие PDF:</strong>
-          <ul>
+          <ul id="existingPdfs">
             {% for pdf in pdfs %}
-              <li>
-                <a href="{{ url_for('uploads', filename=pdf['file_path']) }}" target="_blank">{{ pdf['title'] }}</a>
+              <li data-pdf-id="{{ pdf['id'] }}">
+                {{ pdf['title'] }} —
+                <a class="btn btn-secondary" href="{{ url_for('uploads', filename=pdf['file_path']) }}" target="_blank">Открыть</a>
+                <button type="button" class="btn btn-danger delete-existing-pdf">Удалить</button>
               </li>
             {% endfor %}
           </ul>
@@ -46,109 +58,114 @@
         <div style="margin-top:5px; color:#888;">PDF отсутствует</div>
       {% endif %}
 
-      <button class="btn" type="submit">Сохранить</button>
+      <button class="btn btn-success" type="submit">Сохранить</button>
     </form>
   </section>
 </main>
 
-<!-- Модальное окно PDF -->
-<div id="pdfModal" class="modal" style="display:none;">
-  <div class="modal-content">
-    <span class="close" onclick="closePdfModal()">&times;</span>
-    <iframe id="pdfFrame" src="" width="100%" height="600px"></iframe>
-  </div>
-</div>
-
-<!-- TinyMCE -->
 <script src="https://cdn.tiny.cloud/1/i9tvkgjg77eixf6flp350erllyjxnc60qefuyrkmbt66ggig/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    tinymce.init({
-        selector: '#content',
-        height: 500,
-        plugins: 'image link lists',
-        toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
-        images_upload_url: '{{ url_for("upload_image") }}',
-        automatic_uploads: true,
-        file_picker_types: 'image',
-        file_picker_callback: function(callback, value, meta) {
-            const input = document.createElement('input');
-            input.setAttribute('type', 'file');
-            input.setAttribute('accept', 'image/*,application/pdf');
-            input.onchange = function() {
-                const file = this.files[0];
-                const reader = new FileReader();
-                reader.onload = function() {
-                    if(file.type.startsWith('image')){
-                        callback(reader.result, { alt: file.name });
-                    } else {
-                        // PDF вставляем ссылкой
-                        tinymce.activeEditor.insertContent(
-                            `<a href="{{ url_for('uploads', filename='') }}${file.name}" target="_blank" style="display:block; margin:10px 0;">${file.name}</a>`
-                        );
-                    }
-                };
-                reader.readAsDataURL(file);
-            };
-            input.click();
-        }
-    });
+  tinymce.init({
+    selector: '#content',
+    height: 500,
+    plugins: 'image link lists',
+    toolbar: 'undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image',
+    automatic_uploads: false,
+    file_picker_types: 'image'
+  });
 
-    // Вставка выбранного PDF в редактор
-    const pdfInput = document.getElementById('pdfInput');
-    pdfInput?.addEventListener('change', e=>{
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-            tinymce.activeEditor.insertContent(
-                `<a href="${ev.target.result}" target="_blank" style="display:block; margin:10px 0;">${file.name}</a>`
-            );
-        };
-        reader.readAsDataURL(file);
+  document.getElementById('addPdfBtn').addEventListener('click', addPdfField);
+
+  document.querySelectorAll('.delete-existing-pdf').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const li = e.target.closest('li[data-pdf-id]');
+      const pdfId = li.getAttribute('data-pdf-id');
+      if (!confirm('Удалить этот PDF?')) return;
+
+      try {
+        const resp = await fetch(`{{ url_for('admin_page_pdf_delete', pdf_id=0) }}`.replace('/0', `/${pdfId}`), {
+          method: 'POST'
+        });
+        const data = await resp.json();
+        if (data && data.success) li.remove();
+        else alert('Не удалось удалить PDF');
+      } catch(err) {
+        console.error(err);
+        alert('Ошибка сети при удалении PDF');
+      }
     });
+  });
+
+  document.getElementById('adminForm').addEventListener('submit', function(e) {
+    const uploads = document.querySelectorAll('#pdfUploads .pdf-upload');
+    for (let upload of uploads) {
+      const title = upload.querySelector('input[name="pdf_titles[]"]').value.trim();
+      const file = upload.querySelector('input[name="pdfs[]"]').value;
+      if ((title && !file) || (!title && file)) {
+        e.preventDefault();
+        alert('Для загрузки PDF нужно указать и название, и выбрать файл!');
+        return false;
+      }
+    }
+    return true;
+  });
 });
 
-function openPdfModal(url){
-    document.getElementById('pdfFrame').src = url;
-    document.getElementById('pdfModal').style.display = 'block';
+function addPdfField() {
+  const container = document.getElementById('pdfUploads');
+  const div = document.createElement('div');
+  div.classList.add('pdf-upload');
+
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.name = 'pdf_titles[]';
+  titleInput.placeholder = 'Название PDF';
+  titleInput.classList.add('pdf-title-input');
+
+  const label = document.createElement('label');
+  label.classList.add('btn', 'btn-primary', 'custom-file-label');
+  label.textContent = 'Выбрать файл';
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.name = 'pdfs[]';
+  fileInput.accept = '.pdf';
+  fileInput.style.display = 'none';
+
+  label.appendChild(fileInput);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.classList.add('btn', 'btn-danger');
+  removeBtn.textContent = 'Удалить';
+  removeBtn.addEventListener('click', () => div.remove());
+
+  div.appendChild(titleInput);
+  div.appendChild(label);
+  div.appendChild(removeBtn);
+
+  container.appendChild(div);
 }
-function closePdfModal(){
-    document.getElementById('pdfModal').style.display = 'none';
-    document.getElementById('pdfFrame').src = '';
+
+function removePdfField(button) {
+  button.parentElement.remove();
 }
 </script>
 
 <style>
-.modal {
-  position: fixed;
-  z-index: 9999;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0,0,0,0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.modal-content {
-  background-color: #fff;
-  width: 90%;
-  max-width: 1000px;
-  height: 80%;
-  border-radius: 8px;
-  position: relative;
-}
-#pdfFrame { width:100%; height:100%; border:none; }
-.close {
-  position: absolute;
-  right: 10px;
-  top: 5px;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
+.pdf-upload { display:flex; gap:10px; margin-bottom:8px; align-items:center; }
+.pdf-title-input { flex:2; }
+.custom-file-label { flex:1; cursor:pointer; text-align:center; }
+.pdf-upload input[type="file"] { display:none; }
+
+.btn { display:inline-block; padding:6px 12px; font-size:14px; line-height:1.4; border-radius:8px; border:none; text-decoration:none; text-align:center; cursor:pointer; transition:background 0.2s; }
+.btn-primary { background:#007bff; color:white; } .btn-primary:hover { background:#0069d9; }
+.btn-secondary { background:#6c757d; color:white; } .btn-secondary:hover { background:#5a6268; }
+.btn-danger { background:#dc3545; color:white; } .btn-danger:hover { background:#c82333; }
+.btn-success { background:#28a745; color:white; } .btn-success:hover { background:#218838; }
+
+#existingPdfs .btn.btn-secondary { padding:6px 12px; font-size:14px; }
 </style>
 {% endblock %}

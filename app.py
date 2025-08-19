@@ -224,11 +224,14 @@ def admin_page_edit(pid):
 
         conn.commit()
         conn.close()
-        return redirect(url_for("admin"))
+
+        # <<< вот здесь изменено, остаёмся на странице редактирования
+        return redirect(url_for("admin_page_edit", pid=pid))
 
     pdfs = conn.execute("SELECT * FROM page_pdfs WHERE page_id=?", (pid,)).fetchall()
     conn.close()
     return render_template("admin_page_edit.html", page=dict(page_row), pdfs=pdfs)
+
 
 @app.route("/admin/page/delete/<int:pid>", methods=["POST"])
 def admin_page_delete(pid):
@@ -330,6 +333,16 @@ def admin_button_reorder():
     conn.commit()
     conn.close()
     return jsonify({"success": True})
+
+@app.route("/admin/page/<int:pid>/delete_pdf/<int:pdf_id>", methods=["POST"])
+def delete_pdf(pid, pdf_id):
+    conn = db()
+    conn.execute("DELETE FROM pdfs WHERE id=? AND page_id=?", (pdf_id, pid))
+    conn.commit()
+    conn.close()
+    flash("PDF удалён", "success")
+    return redirect(url_for("admin_page_edit", pid=pid))
+
 
 # ---------------- File Uploads ----------------
 @app.route("/uploads/<path:filename>")

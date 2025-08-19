@@ -10,7 +10,7 @@
     </div>
   </div>
   <div class="spacer"></div>
-  <button id="themeToggle" class="icon-btn" title="Переключить тему">🌙/☀️</button>
+ <!--<button id="themeToggle" class="icon-btn" title="Переключить тему">🌙/☀️</button>-->
   <a class="btn btn-secondary" href="{{ url_for('logout') }}">Выход</a>
 </header>
 
@@ -99,19 +99,20 @@
     </form>
 
     <ul class="list">
-      {% for p in pages %}
-      <li class="list-item">
-        <strong>{{ p['title'] }}</strong>
-        <div class="right">
-          <a class="link" href="{{ url_for('page', pid=p['id']) }}" target="_blank">открыть</a>
-          <a class="link" href="{{ url_for('admin_page_edit', pid=p['id']) }}">редактировать</a>
-          <form class="inline" action="{{ url_for('admin_page_delete', pid=p['id']) }}" method="post" onsubmit="return confirm('Удалить страницу?')">
-            <button class="btn btn-danger" type="submit">Удалить</button>
-          </form>
-        </div>
-      </li>
-      {% endfor %}
-    </ul>
+  {% for p in pages %}
+  <li class="list-item">
+    <strong>{{ p['title'] }}</strong>
+    <div class="right">
+      <a class="btn btn-secondary" href="{{ url_for('page', pid=p['id']) }}" target="_blank">Открыть</a>
+      <a class="btn btn-primary" href="{{ url_for('admin_page_edit', pid=p['id']) }}">Редактировать</a>
+      <form class="inline" action="{{ url_for('admin_page_delete', pid=p['id']) }}" method="post" onsubmit="return confirm('Удалить страницу?')">
+        <button class="btn btn-danger" type="submit">Удалить</button>
+      </form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+
   </section>
 
 </main>
