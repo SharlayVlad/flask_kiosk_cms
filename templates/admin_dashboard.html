@@ -5,12 +5,11 @@
   <div class="brand">
     <div class="logo-circle">A</div>
     <div class="org">
-      <div class="org-title">Админ</div>
+      <div class="org-title">Админ-панель</div>
       <div class="org-sub">Управление киоском</div>
     </div>
   </div>
   <div class="spacer"></div>
- <!--<button id="themeToggle" class="icon-btn" title="Переключить тему">🌙/☀️</button>-->
   <a class="btn btn-secondary" href="{{ url_for('logout') }}">Выход</a>
 </header>
 
@@ -18,23 +17,75 @@
 
   <!-- Организация -->
 <section class="card">
-  <h3>Организация</h3>
+  <h3 style="display: block; text-align: center; margin-bottom: 5px;">Организация</h3>
   <form id="orgForm" class="form" action="{{ url_for('admin_organization_update') }}" method="post" enctype="multipart/form-data">
-    <label>Название организации
-  <input type="text" name="org_name" value="{{ organization.name if organization else '' }}" required>
-</label>
+    <label style="display: block; text-align: center; margin-bottom: 5px;">Название организации
+      <input type="text" name="org_name" value="{{ organization.name if organization else '' }}" required>
+    </label>
 
-<label>Логотип</label>
-<div class="custom-file">
-  <input type="file" name="org_logo" id="orgLogoFile" class="file-input" accept=".png,.jpg,.jpeg,.gif,.svg">
-  <button type="button" class="btn btn-primary" onclick="document.getElementById('orgLogoFile').click();">Выберите файл</button>
+    <label style="display: block; text-align: center; margin-bottom: 5px;">Логотип</label>
+    <div class="custom-file">
+      <input type="file" name="org_logo" id="orgLogoFile" class="file-input" accept=".png,.jpg,.jpeg,.gif,.svg">
+      <button type="button" class="btn btn-primary" onclick="document.getElementById('orgLogoFile').click();" style="display:block; margin:10px auto;"> Выберите файл </button>
+    </div>
+    <br>
+    <img id="orgLogoPreview" src="{% if organization and organization.logo_path %}{{ url_for('uploads', filename=organization.logo_path) }}{% endif %}" alt="Превью логотипа" style="width:100px; height:100px; object-fit:cover; border-radius:50%; margin-top:10px;">
+
+    <!-- QR-код -->
+    <label for="qrInput" style="display: block; text-align: center; margin-bottom: 5px;">
+    Введите текст или URL для QR-кода
+</label>
+<input type="text" id="qrInput" placeholder="Введите текст или URL" style="display:block; margin:10px auto; width:250px; padding:5px;">
+
+<button id="generateQR" type="button" class="btn btn-success" style="display:block; margin:10px auto;">
+    Сгенерировать QR
+</button>
+
+<div class="qr-placeholder" id="qrDisplay" style="display:flex; justify-content:center; align-items:center; margin:20px auto; width:150px; height:150px; border:1px solid #ccc; border-radius:5px;">
+    <!-- QR-код появится здесь -->
 </div>
-<br>
-<img id="orgLogoPreview" src="{% if organization and organization.logo_path %}{{ url_for('uploads', filename=organization.logo_path) }}{% endif %}" alt="Превью логотипа" style="width:100px; height:100px; object-fit:cover; border-radius:50%; margin-top:10px;">
+
+<script src="{{ url_for('static', filename='js/qrcode.min.js') }}"></script>
+<script>
+const qrDisplay = document.getElementById('qrDisplay');
+
+function renderQR(value){
+    qrDisplay.innerHTML = '';
+    new QRCode(qrDisplay, {
+        text: value,
+        width: 150,
+        height: 150
+    });
+}
+
+// Загружаем QR с сервера при загрузке страницы
+fetch('/get_qr')
+    .then(res => res.json())
+    .then(data => { if(data.value) renderQR(data.value); });
+
+document.getElementById('generateQR').addEventListener('click', () => {
+    const qrValue = document.getElementById('qrInput').value;
+    if(!qrValue) return alert('Введите текст для QR-кода');
+
+    fetch('/admin/save_qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: qrValue })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success){
+            renderQR(qrValue);
+        } else {
+            alert('Ошибка при сохранении QR-кода');
+        }
+    });
+});
+</script>
 
 
     <br>
-    <button class="btn btn-success" type="submit">Сохранить организацию</button>
+    <button class="btn btn-success" type="submit" style="display:block; margin:20px auto;"> Сохранить организацию </button>
   </form>
 </section>
 
@@ -54,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
 </script>
 
 
@@ -72,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </select>
       </label>
 
-      <!-- Стилизованный input type=file -->
       <label>Иконка</label>
       <div class="custom-file">
         <input type="file" name="icon" id="iconFile" class="file-input" accept=".png,.jpg,.jpeg,.gif,.svg">
@@ -141,20 +190,19 @@ document.addEventListener('DOMContentLoaded', () => {
     </form>
 
     <ul class="list">
-  {% for p in pages %}
-  <li class="list-item">
-    <strong>{{ p['title'] }}</strong>
-    <div class="right">
-      <a class="btn btn-secondary" href="{{ url_for('page', pid=p['id']) }}" target="_blank">Открыть</a>
-      <a class="btn btn-primary" href="{{ url_for('admin_page_edit', pid=p['id']) }}">Редактировать</a>
-      <form class="inline" action="{{ url_for('admin_page_delete', pid=p['id']) }}" method="post" onsubmit="return confirm('Удалить страницу?')">
-        <button class="btn btn-danger" type="submit">Удалить</button>
-      </form>
-    </div>
-  </li>
-  {% endfor %}
-</ul>
-
+      {% for p in pages %}
+      <li class="list-item">
+        <strong>{{ p['title'] }}</strong>
+        <div class="right">
+          <a class="btn btn-secondary" href="{{ url_for('page', pid=p['id']) }}" target="_blank">Открыть</a>
+          <a class="btn btn-primary" href="{{ url_for('admin_page_edit', pid=p['id']) }}">Редактировать</a>
+          <form class="inline" action="{{ url_for('admin_page_delete', pid=p['id']) }}" method="post" onsubmit="return confirm('Удалить страницу?')">
+            <button class="btn btn-danger" type="submit">Удалить</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
   </section>
 
 </main>
@@ -181,20 +229,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-
    tinymce.init({
-  selector: '#content',
-  plugins: 'image table lists link code',
-  toolbar: 'undo redo | styles | bold italic underline | alignleft aligncenter alignright | bullist numlist | table image link | code',
-  height: 400,
-  menubar: true,
-  branding: false, // убирает "Powered by TinyMCE"
-  images_upload_url: '/upload_image',
-  automatic_uploads: true
-});
+      selector: '#content',
+      plugins: 'image table lists link code',
+      toolbar: 'undo redo | styles | bold italic underline | alignleft aligncenter alignright | bullist numlist | table image link | code',
+      height: 400,
+      menubar: true,
+      branding: false,
+      images_upload_url: '/upload_image',
+      automatic_uploads: true
+    });
 
-
-    // Add/Remove PDF
+    // PDF блок
     const addPdfBtn = document.getElementById('addPdfBtn');
     const pdfContainer = document.getElementById('pdfContainer');
 
@@ -257,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         location.reload();
     });
 
-    // Buttons Drag & DoubleClick
+    // Drag & Drop для кнопок
     const list = document.getElementById('buttonsList');
     let dragEl = null;
 
@@ -332,5 +378,12 @@ body.dark-theme .card{background:#1e1e1e;color:#e0e0e0;}
 .btn-primary { background-color: #0d6efd; }
 .btn-secondary { background-color: #6c757d; }
 .btn-danger { background-color: #dc3545; }
+
+#qrDisplay {
+    display: flex;
+    justify-content: right; /* по горизонтали */
+    align-items: center;     /* по вертикали, если есть высота */
+    margin-top: 10px;        /* отступ сверху */
+}
 </style>
 {% endblock %}

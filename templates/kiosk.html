@@ -25,7 +25,7 @@
     {% for b in buttons %}
     <a class="tile" href="{{ url_for('page', pid=b['page_id']) }}" style="--tile-color: {{ b['color'] or '#0d6efd' }}">
       {% if b['icon_path'] %}
-      <img class="tile-icon" src="{{ url_for('static', filename=b['icon_path']) }}" alt="icon">
+      <img class="tile-icon" src="{{ url_for('uploads', filename=b['icon_path']) }}" alt="icon">
       {% endif %}
       <span class="tile-title">{{ b['title'] }}</span>
     </a>
@@ -35,7 +35,10 @@
 
 <footer class="bottombar">
   <div id="datetime"></div>
-  <div class="qr-placeholder">QR</div>
+  <div class="footer-text">
+    Для навигации используйте сенсорную панель
+  </div>
+  <div class="qr-placeholder" id="qrCodeContainer">QR</div>
 </footer>
 
 <script>
@@ -69,5 +72,43 @@ function closePdfModal(){
     document.getElementById('pdfModal').style.display = 'none';
 }
 </script>
+
+
+
+<script src="{{ url_for('static', filename='js/qrcode.min.js') }}"></script>
+<script>
+(async () => {
+  try {
+    const r = await fetch('/get_qr');
+    const { value } = await r.json();
+    if (value) {
+      const box = document.querySelector('.qr-placeholder');
+      box.innerHTML = ''; // очистить "QR"
+      new QRCode(box, { text: value, width: 120, height: 120 });
+    }
+  } catch(e) { console.error(e); }
+})();
+</script>
+
+<style>
+  .bottombar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 15px;
+  background: #f8f9fa;
+  border-top: 1px solid #ddd;
+}
+
+.bottombar .footer-text {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+  color: #666; /* серый цвет */
+}
+
+
+</style>
 
 {% endblock %}
